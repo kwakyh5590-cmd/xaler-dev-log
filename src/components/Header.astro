@@ -26,7 +26,7 @@ import HeaderLink from './HeaderLink.astro';
 	.brand { justify-self:start; display:inline-flex; min-height:44px; padding:0 .75rem; align-items:center; gap:.65rem; color:#fff; font-weight:800; line-height:1; box-sizing:border-box; }
 	.brand-mark { display:grid; width:34px; height:34px; place-items:center; border-radius:10px; background:linear-gradient(135deg,#22d3ee,#6366f1); font-size:.72rem; letter-spacing:.04em; }
 	.internal-links { justify-self:center; display:flex; align-items:center; gap:.4rem; }
-	:global(.internal-links a) { display:inline-flex; min-height:44px; padding:0 .75rem; align-items:center; justify-content:center; line-height:1; box-sizing:border-box; }
+	:global(.internal-links a) { display:inline-flex; min-width:44px; min-height:44px; padding:0 .75rem; align-items:center; justify-content:center; line-height:1; box-sizing:border-box; }
 	.github-link { justify-self:end; display:inline-flex; min-height:44px; padding:0 1rem; align-items:center; justify-content:center; font-size:.86rem; line-height:1; border:1px solid rgba(148,163,184,.28); border-radius:999px; box-sizing:border-box; }
 	@media(max-width:720px){ .github-link{display:none}.brand span:last-child{display:none} }
 </style>

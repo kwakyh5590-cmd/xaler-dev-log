@@ -1,0 +1,33 @@
+---
+import { withBase } from '../lib/urls';
+
+interface Props {
+	tag: string;
+}
+
+const { tag } = Astro.props;
+---
+
+<a href={withBase(`/tags/${encodeURIComponent(tag)}/`)}>#{tag}</a>
+
+<style>
+	a {
+		display: inline-flex;
+		min-height: 44px;
+		padding: 0 .65rem;
+		align-items: center;
+		border: 1px solid rgba(148, 163, 184, .16);
+		border-radius: 999px;
+		background: rgba(15, 23, 42, .55);
+		color: #94a3b8;
+		font-size: .75rem;
+		line-height: 1;
+		text-decoration: none;
+		box-sizing: border-box;
+	}
+	a:hover,
+	a:focus-visible {
+		border-color: rgba(34, 211, 238, .55);
+		color: #67e8f9;
+	}
+</style>

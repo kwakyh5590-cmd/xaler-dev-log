@@ -5,6 +5,7 @@ import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
+import TagLink from '../components/TagLink.astro';
 import { withBase } from '../lib/urls';
 
 type Props = CollectionEntry<'blog'>['data'];
@@ -55,8 +56,11 @@ const { title, description, pubDate, updatedDate, heroImage, category, tags } = 
 			}
 			.category { color: #22d3ee; font-size: .75rem; letter-spacing: .1em; }
 			.description { color: #94a3b8; font-size: 1rem; line-height: 1.6; }
-			.tags { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; color: #64748b; font-size: .75rem; }
-			.back { display: inline-block; margin-top: 3rem; color: #67e8f9; text-decoration: none; }
+			.tags { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+			.back { display: inline-flex; min-height: 44px; margin-top: 3rem; align-items: center; color: #67e8f9; text-decoration: none; }
+			@media (max-width: 480px) {
+				.title h1 { font-size: clamp(2.1rem, 9vw, 2.6rem); line-height: 1.12; }
+			}
 		</style>
 	</head>
 
@@ -82,7 +86,7 @@ const { title, description, pubDate, updatedDate, heroImage, category, tags } = 
 						</div>
 						<h1>{title}</h1>
 						<p class="description">{description}</p>
-						<div class="tags">{tags.map((tag) => <span>#{tag}</span>)}</div>
+						<div class="tags" aria-label="글 태그">{tags.map((tag) => <TagLink tag={tag} />)}</div>
 					</div>
 					<slot />
 					<a class="back" href={withBase('/blog')}>← 모든 글로 돌아가기</a>
