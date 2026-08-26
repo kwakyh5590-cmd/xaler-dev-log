@@ -1,0 +1,21 @@
+---
+import { GITHUB_URL, SITE_TITLE } from '../consts';
+import { withBase } from '../lib/urls';
+const year = new Date().getFullYear();
+---
+
+<footer>
+	<div class="footer-inner">
+		<div><strong>{SITE_TITLE}</strong><p>배운 것을 설명할 수 있을 때까지 기록합니다.</p></div>
+		<nav aria-label="하단 메뉴">
+			<a href={withBase('/privacy')}>개인정보처리방침</a>
+			<a href={withBase('/rss.xml')}>RSS</a>
+			<a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a>
+		</nav>
+	</div>
+	<p class="copyright">© {year} Xaler. All rights reserved.</p>
+</footer>
+
+<style>
+	footer{padding:3.5rem 1.25rem 2.5rem;border-top:1px solid rgba(148,163,184,.18);background:#090e19;color:#94a3b8}.footer-inner{max-width:1120px;margin:0 auto;display:flex;justify-content:space-between;gap:2rem}strong{color:#f8fafc}p{margin:.35rem 0 0;font-size:.9rem}nav{display:flex;flex-wrap:wrap;gap:1rem}a{color:#cbd5e1;text-decoration:none;font-size:.88rem}a:hover{color:#67e8f9}.copyright{max-width:1120px;margin:2rem auto 0;padding-top:1.5rem;border-top:1px solid rgba(148,163,184,.12)}@media(max-width:640px){.footer-inner{flex-direction:column}}
+</style>

@@ -1,0 +1,31 @@
+---
+import { GITHUB_URL, SITE_TITLE } from '../consts';
+import { withBase } from '../lib/urls';
+import HeaderLink from './HeaderLink.astro';
+---
+
+<header>
+	<nav aria-label="주요 메뉴">
+		<a class="brand" href={withBase('/')} aria-label={`${SITE_TITLE} 홈`}>
+			<span class="brand-mark">XL</span><span>{SITE_TITLE}</span>
+		</a>
+		<div class="internal-links">
+			<HeaderLink href={withBase('/')}>홈</HeaderLink>
+			<HeaderLink href={withBase('/blog')}>글</HeaderLink>
+			<HeaderLink href={withBase('/about')}>소개</HeaderLink>
+		</div>
+		<a class="github-link" href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub ↗</a>
+	</nav>
+</header>
+
+<style>
+	header { position:sticky; top:0; z-index:10; padding:0 1.25rem; background:rgba(9,14,25,.88); border-bottom:1px solid rgba(148,163,184,.18); backdrop-filter:blur(16px); }
+	nav { max-width:1120px; min-height:68px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; }
+	nav a { padding:.6rem .75rem; color:#cbd5e1; text-decoration:none; }
+	nav a.active { color:#fff; }
+	.brand { display:flex; align-items:center; gap:.65rem; font-weight:800; color:#fff; }
+	.brand-mark { display:grid; width:34px; height:34px; place-items:center; border-radius:10px; background:linear-gradient(135deg,#22d3ee,#6366f1); font-size:.72rem; letter-spacing:.04em; }
+	.internal-links { display:flex; gap:.4rem; }
+	.github-link { font-size:.86rem; border:1px solid rgba(148,163,184,.28); border-radius:999px; }
+	@media(max-width:720px){ .github-link{display:none}.brand span:last-child{display:none} }
+</style>
