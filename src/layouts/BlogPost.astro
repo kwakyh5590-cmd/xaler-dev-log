@@ -98,7 +98,7 @@ const pageFade = fade({ duration: '0.24s' });
 
 				document.querySelectorAll<HTMLElement>('.prose-content pre:not(.code-block pre)').forEach((pre) => {
 					const wrapper = document.createElement('div');
-					wrapper.className = 'code-block';
+					wrapper.className = 'code-block is-visible';
 					pre.parentNode?.insertBefore(wrapper, pre);
 					wrapper.appendChild(pre);
 					const button = document.createElement('button');
