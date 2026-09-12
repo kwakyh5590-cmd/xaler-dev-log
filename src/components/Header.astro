@@ -19,7 +19,9 @@ import HeaderLink from './HeaderLink.astro';
 		</div>
 		<div class="external-links">
 			<a class="search-link" href={`${withBase('/blog')}#search`}><span aria-hidden="true">⌕</span> 검색</a>
-			<a class="github-link" href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub ↗</a>
+			<a class="github-link" href={GITHUB_URL} target="_blank" rel="noreferrer" aria-label="GitHub 새 창에서 열기">
+				<span class="github-label">GitHub</span><span class="github-icon" aria-hidden="true">↗</span>
+			</a>
 		</div>
 	</nav>
 </header>
@@ -101,7 +103,8 @@ import HeaderLink from './HeaderLink.astro';
 		line-height: 1;
 	}
 	.search-link { color: var(--muted); }
-	.github-link { border: 1px solid var(--line); }
+	.github-link { gap: .35rem; border: 1px solid var(--line); }
+	.github-icon { display: inline-grid; width: 1em; height: 1em; place-items: center; line-height: 1; }
 	.external-links a:hover { border-color: var(--line-strong); color: var(--cyan); }
 	@media (max-width: 760px) {
 		header { padding: 0 .75rem; }
@@ -120,7 +123,8 @@ import HeaderLink from './HeaderLink.astro';
 		.internal-links { grid-area: menu; justify-self: center; }
 		.external-links { grid-area: external; }
 		:global(.internal-links a) { min-width: 46px; min-height: 36px; padding: 0 .55rem; }
-		.github-link { width: 44px; padding: 0 !important; overflow: hidden; color: transparent !important; }
-		.github-link::before { color: var(--muted); content: '↗'; font-size: 1rem; }
+		.github-link { width: 44px; height: 44px; padding: 0 !important; color: var(--muted); }
+		.github-label { display: none; }
+		.github-icon { font-size: 1.05rem; }
 	}
 </style>
