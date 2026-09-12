@@ -3,7 +3,9 @@
 // all pages through the use of the <BaseHead /> component.
 import '../styles/global.css';
 import type { ImageMetadata } from 'astro';
+import { ClientRouter } from 'astro:transitions';
 import FallbackImage from '../assets/blog-placeholder-1.jpg';
+import MotionController from './MotionController.astro';
 import { SITE_TITLE } from '../consts';
 import { withBase } from '../lib/urls';
 
@@ -21,6 +23,8 @@ const { title, description, image = FallbackImage } = Astro.props;
 <!-- Global Metadata -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="theme-color" content="#070b14" />
+<meta name="color-scheme" content="dark" />
 <link rel="icon" type="image/svg+xml" href={withBase('/favicon.svg')} />
 <link rel="icon" href={withBase('/favicon.ico')} />
 <link rel="sitemap" href={withBase('/sitemap-index.xml')} />
@@ -31,6 +35,8 @@ const { title, description, image = FallbackImage } = Astro.props;
 	href={new URL(withBase('/rss.xml'), Astro.site)}
 />
 <meta name="generator" content={Astro.generator} />
+<ClientRouter />
+<MotionController />
 
 <!-- Canonical URL -->
 <link rel="canonical" href={canonicalURL} />

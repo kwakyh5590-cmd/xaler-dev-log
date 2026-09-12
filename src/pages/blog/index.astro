@@ -1,16 +1,143 @@
 ---
 import { getCollection } from 'astro:content';
 import FormattedDate from '../../components/FormattedDate.astro';
+import TagLink from '../../components/TagLink.astro';
 import { SITE_DESCRIPTION } from '../../consts';
 import PageLayout from '../../layouts/PageLayout.astro';
 import { withBase } from '../../lib/urls';
-const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort((a,b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft))
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const categories = [...new Set(posts.map((post) => post.data.category))];
+const tags = [...new Set(posts.flatMap((post) => post.data.tags))].sort((a, b) => a.localeCompare(b, 'ko'));
 ---
 
 <PageLayout title="모든 글 | Xaler Dev Log" description={SITE_DESCRIPTION} wide>
-	<header class="page-header"><span>ALL NOTES</span><h1>배우고 해결한 기록</h1><p>프로젝트, 디버깅, 학습, 개발 회고를 정리합니다.</p></header>
-	<section class="post-list">
-		{posts.map((post,index) => <a href={withBase(`/blog/${post.id}/`)}><div class="number">{String(index+1).padStart(2,'0')}</div><div class="content"><div class="meta"><span>{post.data.category}</span><FormattedDate date={post.data.pubDate} /></div><h2>{post.data.title}</h2><p>{post.data.description}</p></div><div class="arrow">↗</div></a>)}
+	<header class="page-header">
+		<div>
+			<p class="eyebrow">ALL NOTES · {String(posts.length).padStart(2, '0')}</p>
+			<h1>배우고 해결한<br /><em>모든 기록.</em></h1>
+		</div>
+		<p>프로젝트를 만들며 내린 판단, 오류를 해결한 과정,<br />새롭게 배운 개념과 개발자로서의 생각을 정리합니다.</p>
+	</header>
+
+	<section class="filter-panel" id="search" aria-label="글 검색 및 필터">
+		<label class="search-box" for="post-search">
+			<span aria-hidden="true">⌕</span>
+			<span class="sr-only">글 검색</span>
+			<input id="post-search" type="search" placeholder="제목, 설명, 태그 검색" autocomplete="off" />
+			<kbd>⌘ K</kbd>
+		</label>
+		<div class="filter-row">
+			<span class="filter-label">CATEGORY</span>
+			<div class="filter-buttons" data-filter-group="category">
+				<button type="button" data-category="all" aria-pressed="true">전체</button>
+				{categories.map((category) => <button type="button" data-category={category} aria-pressed="false">{category}</button>)}
+			</div>
+		</div>
+		{tags.length > 0 && (
+			<div class="filter-row">
+				<span class="filter-label">TAG</span>
+				<div class="filter-buttons" data-filter-group="tag">
+					<button type="button" data-tag="all" aria-pressed="true">전체</button>
+					{tags.map((tag) => <button type="button" data-tag={tag} aria-pressed="false">#{tag}</button>)}
+				</div>
+			</div>
+		)}
 	</section>
+
+	<div class="list-status"><span data-result-count>{posts.length}개의 기록</span><span>NEWEST FIRST</span></div>
+
+	<section class="post-list" aria-label="글 목록">
+		{posts.map((post, index) => (
+			<article
+				data-post
+				data-category={post.data.category}
+				data-tags={post.data.tags.join('|')}
+				data-search={`${post.data.title} ${post.data.description} ${post.data.category} ${post.data.tags.join(' ')}`.toLocaleLowerCase('ko')}
+			>
+				<a class="post-main" href={withBase(`/blog/${post.id}/`)}>
+					<div class="number">{String(index + 1).padStart(2, '0')}</div>
+					<div class="content">
+						<div class="meta"><span>{post.data.category}</span><FormattedDate date={post.data.pubDate} /></div>
+						<h2>{post.data.title}</h2>
+						<p>{post.data.description}</p>
+					</div>
+					<div class="arrow" aria-hidden="true">↗</div>
+				</a>
+				<div class="post-tags">{post.data.tags.map((tag) => <TagLink tag={tag} />)}</div>
+			</article>
+		))}
+	</section>
+	<p class="empty-state" data-empty hidden>조건에 맞는 기록이 없습니다.<br /><span>검색어 또는 필터를 바꿔보세요.</span></p>
 </PageLayout>
-<style>.page-header{padding:5rem 0 3rem}.page-header span{color:#22d3ee;font-size:.72rem;letter-spacing:.14em}.page-header h1{margin:.75rem 0;font-size:clamp(2.6rem,7vw,5rem);letter-spacing:-.055em}.page-header p{color:#94a3b8}.post-list{border-top:1px solid rgba(148,163,184,.18)}.post-list>a{display:grid;grid-template-columns:60px 1fr 40px;gap:1.5rem;padding:2rem 0;border-bottom:1px solid rgba(148,163,184,.18);color:inherit;text-decoration:none}.number{color:#475569;font-size:.78rem}.meta{display:flex;gap:1rem;color:#64748b;font-size:.75rem}.meta span{color:#67e8f9}h2{margin:.55rem 0;font-size:1.55rem}.content p{margin:0;color:#94a3b8;font-size:.9rem}.arrow{color:#64748b;transition:transform .2s}.post-list>a:hover .arrow{color:#67e8f9;transform:translate(4px,-4px)}@media(max-width:640px){.post-list>a{grid-template-columns:1fr 30px}.number{display:none}}</style>
+
+<script>
+	let filterCleanup = () => {};
+
+	function setupBlogFilters() {
+		filterCleanup();
+		const input = document.querySelector<HTMLInputElement>('#post-search');
+		if (!input) return;
+
+		const controller = new AbortController();
+		const postElements = [...document.querySelectorAll<HTMLElement>('[data-post]')];
+		const resultCount = document.querySelector<HTMLElement>('[data-result-count]');
+		const emptyState = document.querySelector<HTMLElement>('[data-empty]');
+		let selectedCategory = 'all';
+		let selectedTag = 'all';
+
+		function applyFilters() {
+			const query = input.value.trim().toLocaleLowerCase('ko');
+			let visible = 0;
+			for (const post of postElements) {
+				const matchesQuery = !query || (post.dataset.search ?? '').includes(query);
+				const matchesCategory = selectedCategory === 'all' || post.dataset.category === selectedCategory;
+				const matchesTag = selectedTag === 'all' || (post.dataset.tags ?? '').split('|').includes(selectedTag);
+				const show = matchesQuery && matchesCategory && matchesTag;
+				post.hidden = !show;
+				if (show) visible += 1;
+			}
+			if (resultCount) resultCount.textContent = `${visible}개의 기록`;
+			if (emptyState) emptyState.hidden = visible !== 0;
+		}
+
+		function selectFilter(button: HTMLButtonElement, key: 'category' | 'tag') {
+			const group = button.closest('[data-filter-group]');
+			group?.querySelectorAll('button').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+			if (key === 'category') selectedCategory = button.dataset.category ?? 'all';
+			if (key === 'tag') selectedTag = button.dataset.tag ?? 'all';
+			applyFilters();
+		}
+
+		input.addEventListener('input', applyFilters, { signal: controller.signal });
+		document.querySelectorAll<HTMLButtonElement>('[data-category]').forEach((button) => button.addEventListener('click', () => selectFilter(button, 'category'), { signal: controller.signal }));
+		document.querySelectorAll<HTMLButtonElement>('[data-tag]').forEach((button) => button.addEventListener('click', () => selectFilter(button, 'tag'), { signal: controller.signal }));
+		document.addEventListener('keydown', (event) => {
+			if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === 'k') {
+				event.preventDefault();
+				input.focus();
+			}
+		}, { signal: controller.signal });
+
+		filterCleanup = () => controller.abort();
+	}
+
+	document.addEventListener('astro:page-load', setupBlogFilters);
+</script>
+
+<style>
+	.page-header { display: grid; grid-template-columns: 1.2fr .8fr; min-height: 430px; padding: 5.5rem 0 4rem; align-items: end; gap: 3rem; border-bottom: 1px solid var(--line); }
+	.page-header h1 { margin: .7rem 0 0; font-size: clamp(3.3rem, 7vw, 6rem); line-height: .98; letter-spacing: -.065em; }.page-header h1 em { color: transparent; font-style: normal; background: var(--gradient); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }.page-header > p { max-width: 470px; margin: 0 0 .5rem; color: var(--muted); font-size: .92rem; }
+	.filter-panel { padding: 2.3rem 0; border-bottom: 1px solid var(--line); scroll-margin-top: calc(var(--header-height) + 1rem); }
+	.search-box { display: grid; grid-template-columns: 26px 1fr auto; min-height: 60px; padding: 0 1rem; align-items: center; gap: .7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: rgba(15, 23, 42, .58); color: var(--faint); transition: border-color .2s ease, background .2s ease; }.search-box:focus-within { border-color: var(--line-strong); background: rgba(15, 23, 42, .82); }.search-box > span:first-child { color: var(--cyan); font-size: 1.35rem; }.search-box input { width: 100%; height: 56px; padding: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: .9rem; }.search-box input::placeholder { color: var(--faint); }.search-box kbd { padding: .28rem .48rem; border: 1px solid var(--line); border-radius: 6px; color: var(--faint); background: rgba(7, 11, 20, .6); font: .62rem/1 var(--font-code); }
+	.filter-row { display: grid; grid-template-columns: 100px 1fr; padding-top: 1.3rem; align-items: start; gap: .5rem; }.filter-label { padding-top: .62rem; color: var(--faint); font: 700 .62rem/1 var(--font-code); letter-spacing: .12em; }.filter-buttons { display: flex; flex-wrap: wrap; gap: .4rem; }.filter-buttons button { min-height: 40px; padding: 0 .8rem; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; font-size: .72rem; }.filter-buttons button:hover { color: var(--text); }.filter-buttons button[aria-pressed='true'] { border-color: var(--line-strong); background: rgba(34, 211, 238, .08); color: var(--cyan); }
+	.list-status { display: flex; padding: 2rem 0 .85rem; justify-content: space-between; color: var(--faint); font: 700 .62rem/1 var(--font-code); letter-spacing: .1em; }
+	.post-list { border-top: 1px solid var(--line); }.post-list article { padding: 0 0 1.4rem; border-bottom: 1px solid var(--line); }.post-main { display: grid; grid-template-columns: 70px 1fr 46px; padding: 2rem 0 1rem; align-items: start; gap: 1.2rem; color: inherit; text-decoration: none; }.number { color: var(--faint); font: 700 .68rem/1.7 var(--font-code); }.meta { display: flex; flex-wrap: wrap; gap: .7rem; color: var(--faint); font: .64rem/1.5 var(--font-code); }.meta span { color: var(--cyan); letter-spacing: .08em; text-transform: uppercase; }.content h2 { margin: .75rem 0 .55rem; font-size: clamp(1.45rem, 3vw, 2rem); transition: color .2s ease; }.content p { max-width: 680px; margin: 0; color: var(--muted); font-size: .86rem; }.arrow { justify-self: end; color: var(--faint); font-size: 1.1rem; transition: color .2s ease, transform .2s ease; }.post-main:hover h2 { color: var(--cyan); }.post-main:hover .arrow { color: var(--cyan); transform: translate(4px, -4px); }.post-tags { display: flex; padding-left: 91px; flex-wrap: wrap; gap: .4rem; }
+	.empty-state { padding: 6rem 1rem; text-align: center; color: var(--text-soft); }.empty-state span { color: var(--muted); font-size: .82rem; }
+	@media (max-width: 720px) {
+		.page-header { grid-template-columns: 1fr; min-height: auto; padding: 3.8rem 0 3rem; gap: 1.6rem; }.page-header h1 { font-size: clamp(2.8rem, 14vw, 4.4rem); }.page-header > p br { display: none; }
+		.filter-panel { padding: 1.3rem 0 2rem; }.search-box { min-height: 56px; }.search-box kbd { display: none; }.filter-row { grid-template-columns: 1fr; padding-top: 1rem; }.filter-label { padding: 0 0 .3rem; }.filter-buttons { flex-wrap: nowrap; margin-right: -.75rem; padding-right: .75rem; overflow-x: auto; scrollbar-width: none; }.filter-buttons::-webkit-scrollbar { display: none; }.filter-buttons button { flex: 0 0 auto; min-height: 44px; }
+		.post-main { grid-template-columns: 1fr 30px; padding: 1.6rem 0 .9rem; }.number { display: none; }.content h2 { font-size: 1.45rem; }.post-tags { padding-left: 0; }
+	}
+</style>

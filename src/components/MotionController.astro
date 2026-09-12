@@ -1,0 +1,57 @@
+<script>
+	const motionSelector = [
+		'.hero-carousel',
+		'.hero-copy > *',
+		'.signal-card',
+		'.principles article',
+		'.section-heading > *',
+		'.featured-card',
+		'.post-card',
+		'.explore-copy > *',
+		'.topic-list > *',
+		'.page-header > *',
+		'.filter-panel',
+		'.list-status',
+		'.post-list > article',
+		'.post-list > a',
+		'.about-page > *',
+		'.post-hero > *',
+		'.hero-image',
+		'.mobile-toc',
+		'.prose-content > *',
+		'.post-navigation',
+		'.back-bottom',
+	].join(',');
+
+	let revealObserver: IntersectionObserver | undefined;
+
+	function setupMotion() {
+		revealObserver?.disconnect();
+		const targets = [...document.querySelectorAll<HTMLElement>(motionSelector)];
+		const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+		for (const target of targets) {
+			target.classList.remove('is-visible');
+			const siblings = target.parentElement ? [...target.parentElement.children] : [];
+			const siblingIndex = Math.max(0, siblings.indexOf(target));
+			target.style.setProperty('--motion-delay', `${Math.min(siblingIndex, 4) * 65}ms`);
+		}
+
+		if (reduceMotion || !('IntersectionObserver' in window)) {
+			targets.forEach((target) => target.classList.add('is-visible'));
+			return;
+		}
+
+		revealObserver = new IntersectionObserver((entries) => {
+			for (const entry of entries) {
+				if (!entry.isIntersecting) continue;
+				entry.target.classList.add('is-visible');
+				revealObserver?.unobserve(entry.target);
+			}
+		}, { threshold: .08, rootMargin: '0px 0px -8% 0px' });
+
+		requestAnimationFrame(() => targets.forEach((target) => revealObserver?.observe(target)));
+	}
+
+	document.addEventListener('astro:page-load', setupMotion);
+</script>

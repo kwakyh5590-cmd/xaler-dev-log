@@ -1,0 +1,139 @@
+---
+import { HERO_SLIDES, HERO_SLIDE_INTERVAL } from '../data/heroSlides';
+import { withBase } from '../lib/urls';
+---
+
+<section class="hero-carousel" data-carousel data-interval={HERO_SLIDE_INTERVAL} aria-label="Xaler Dev Log 이미지 갤러리">
+	<div class="carousel-frame">
+		<div class="carousel-label"><span><i></i> VISUAL LOG</span><span>CLICK TO EXPLORE</span></div>
+		<div class="slides">
+			{HERO_SLIDES.map((slide, index) => (
+				<figure class:list={['slide', { active: index === 0 }]} data-slide aria-hidden={index !== 0}>
+					<img src={withBase(slide.image)} alt={slide.alt} loading={index === 0 ? 'eager' : 'lazy'} fetchpriority={index === 0 ? 'high' : 'auto'} />
+					<figcaption><small>{slide.eyebrow}</small><strong>{slide.title}</strong></figcaption>
+				</figure>
+			))}
+		</div>
+		<button class="stage-button" type="button" data-stage-next aria-label="다음 이미지 보기"></button>
+		<div class="carousel-footer">
+			<div class="pagination" aria-label="이미지 선택">
+				{HERO_SLIDES.map((slide, index) => (
+					<button type="button" data-dot={index} aria-label={`${index + 1}번 이미지: ${slide.eyebrow}`} aria-pressed={index === 0}><span></span></button>
+				))}
+			</div>
+			<div class="counter"><span data-current>01</span><i></i><span>{String(HERO_SLIDES.length).padStart(2, '0')}</span></div>
+			<div class="arrows">
+				<button type="button" data-prev aria-label="이전 이미지">←</button>
+				<button type="button" data-next aria-label="다음 이미지">→</button>
+			</div>
+		</div>
+		<div class="timer" aria-hidden="true"><span data-timer></span></div>
+	</div>
+	<p class="sr-only" aria-live="polite" data-carousel-status></p>
+</section>
+
+<script>
+	let carouselCleanup = () => {};
+
+	function setupHeroCarousel() {
+		carouselCleanup();
+		const root = document.querySelector<HTMLElement>('[data-carousel]');
+		if (!root) return;
+
+		const slides = [...root.querySelectorAll<HTMLElement>('[data-slide]')];
+		const dots = [...root.querySelectorAll<HTMLButtonElement>('[data-dot]')];
+		const current = root.querySelector<HTMLElement>('[data-current]');
+		const status = root.querySelector<HTMLElement>('[data-carousel-status]');
+		const timerBar = root.querySelector<HTMLElement>('[data-timer]');
+		const interval = Number(root.dataset.interval) || 6500;
+		const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const controller = new AbortController();
+		let activeIndex = Math.max(0, slides.findIndex((slide) => slide.classList.contains('active')));
+		let timerId: number | undefined;
+		let pausedByPointer = false;
+		let pausedByFocus = false;
+
+		function restartProgress() {
+			if (!timerBar || reduceMotion) return;
+			timerBar.style.animation = 'none';
+			void timerBar.offsetWidth;
+			timerBar.style.animation = `carousel-progress ${interval}ms linear forwards`;
+		}
+
+		function showSlide(nextIndex: number, announce = false) {
+			activeIndex = (nextIndex + slides.length) % slides.length;
+			slides.forEach((slide, index) => {
+				const active = index === activeIndex;
+				slide.classList.toggle('active', active);
+				slide.setAttribute('aria-hidden', String(!active));
+			});
+			dots.forEach((dot, index) => dot.setAttribute('aria-pressed', String(index === activeIndex)));
+			if (current) current.textContent = String(activeIndex + 1).padStart(2, '0');
+			if (announce && status) status.textContent = `${activeIndex + 1}번 이미지로 이동했습니다.`;
+			restartProgress();
+		}
+
+		function stopAutoPlay() {
+			if (timerId) window.clearInterval(timerId);
+			timerId = undefined;
+			root.dataset.playing = 'false';
+			if (timerBar) timerBar.style.animationPlayState = 'paused';
+		}
+
+		function startAutoPlay() {
+			if (reduceMotion || slides.length < 2 || pausedByPointer || pausedByFocus || document.hidden) return;
+			stopAutoPlay();
+			root.dataset.playing = 'true';
+			if (timerBar) timerBar.style.animationPlayState = 'running';
+			timerId = window.setInterval(() => showSlide(activeIndex + 1), interval);
+			restartProgress();
+		}
+
+		function move(step: number) {
+			showSlide(activeIndex + step, true);
+			startAutoPlay();
+		}
+
+		root.querySelector('[data-stage-next]')?.addEventListener('click', () => move(1), { signal: controller.signal });
+		root.querySelector('[data-next]')?.addEventListener('click', () => move(1), { signal: controller.signal });
+		root.querySelector('[data-prev]')?.addEventListener('click', () => move(-1), { signal: controller.signal });
+		dots.forEach((dot, index) => dot.addEventListener('click', () => { showSlide(index, true); startAutoPlay(); }, { signal: controller.signal }));
+		root.addEventListener('pointerenter', () => { pausedByPointer = true; stopAutoPlay(); }, { signal: controller.signal });
+		root.addEventListener('pointerleave', () => { pausedByPointer = false; startAutoPlay(); }, { signal: controller.signal });
+		root.addEventListener('focusin', () => { pausedByFocus = true; stopAutoPlay(); }, { signal: controller.signal });
+		root.addEventListener('focusout', (event) => {
+			if (root.contains(event.relatedTarget as Node | null)) return;
+			pausedByFocus = false;
+			startAutoPlay();
+		}, { signal: controller.signal });
+		document.addEventListener('visibilitychange', () => document.hidden ? stopAutoPlay() : startAutoPlay(), { signal: controller.signal });
+
+		showSlide(activeIndex);
+		startAutoPlay();
+		carouselCleanup = () => {
+			controller.abort();
+			if (timerId) window.clearInterval(timerId);
+		};
+	}
+
+	document.addEventListener('astro:page-load', setupHeroCarousel);
+</script>
+
+<style>
+	.hero-carousel { grid-column: 1 / -1; min-width: 0; }
+	.carousel-frame { position: relative; height: clamp(300px, 31vw, 390px); overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-lg); background: #09111f; box-shadow: var(--shadow-card); isolation: isolate; }
+	.carousel-label { position: absolute; top: 1.4rem; right: 1.5rem; left: 1.5rem; z-index: 5; display: flex; justify-content: space-between; color: rgba(203, 213, 225, .58); font: 700 .58rem/1 var(--font-code); letter-spacing: .12em; pointer-events: none; }
+	.carousel-label span:first-child { display: flex; align-items: center; gap: .5rem; color: var(--cyan); }.carousel-label i { width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 12px var(--cyan); }
+	.slides, .slide { position: absolute; inset: 0; margin: 0; }.slide { opacity: 0; transform: scale(1.035); transition: opacity .9s ease, transform 1.25s cubic-bezier(.22, 1, .36, 1); pointer-events: none; }.slide::after { position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, rgba(5, 9, 20, .7), transparent 58%), linear-gradient(to top, rgba(5, 9, 20, .72), transparent 55%); content: ''; }.slide.active { z-index: 1; opacity: 1; transform: scale(1); }.slide img { width: 100%; height: 100%; object-fit: cover; border-radius: 0; }.slide figcaption { position: absolute; z-index: 2; right: 1.5rem; bottom: 1.55rem; left: 1.5rem; display: grid; max-width: 620px; gap: .35rem; }.slide figcaption small { color: var(--cyan); font: 700 .58rem/1 var(--font-code); letter-spacing: .14em; }.slide figcaption strong { color: var(--text); font-size: clamp(1.25rem, 2.5vw, 2rem); line-height: 1.2; letter-spacing: -.035em; text-shadow: 0 2px 20px rgba(0, 0, 0, .5); }
+	.stage-button { position: absolute; inset: 0; z-index: 3; width: 100%; border: 0; background: transparent; cursor: pointer; }.stage-button:focus-visible { outline-offset: -5px; }
+	.carousel-footer { position: absolute; right: 1.5rem; bottom: 1.45rem; z-index: 6; display: flex; align-items: center; gap: 1rem; }
+	.pagination { display: flex; align-items: center; gap: .2rem; }.pagination button { display: grid; width: 30px; height: 44px; padding: 0; place-items: center; border: 0; background: transparent; cursor: pointer; }.pagination span { display: block; width: 18px; height: 2px; border-radius: 2px; background: rgba(203, 213, 225, .35); transition: width .25s ease, background .25s ease; }.pagination button[aria-pressed='true'] span { width: 26px; background: var(--cyan); }
+	.counter { display: flex; align-items: center; gap: .45rem; color: rgba(203, 213, 225, .55); font: 700 .6rem/1 var(--font-code); }.counter span:first-child { color: var(--text); }.counter i { width: 24px; height: 1px; background: var(--line-strong); }
+	.arrows { display: flex; gap: .3rem; }.arrows button { width: 44px; height: 44px; padding: 0; border: 1px solid rgba(203, 213, 225, .22); border-radius: 50%; background: rgba(7, 11, 20, .55); color: var(--text-soft); cursor: pointer; transition: border-color .2s ease, background .2s ease, color .2s ease, transform .2s ease; }.arrows button:hover { border-color: var(--cyan); background: rgba(34, 211, 238, .1); color: var(--cyan); transform: translateY(-2px); }
+	.timer { position: absolute; right: 0; bottom: 0; left: 0; z-index: 7; height: 2px; background: rgba(148, 163, 184, .12); }.timer span { display: block; width: 100%; height: 100%; background: var(--gradient); transform-origin: left; }
+	@keyframes carousel-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+	@media (max-width: 700px) {
+		.carousel-frame { height: 260px; border-radius: var(--radius-md); }.carousel-label { top: 1rem; right: 1rem; left: 1rem; }.carousel-label span:last-child, .counter { display: none; }.slide figcaption { right: 1rem; bottom: 4.6rem; left: 1rem; }.slide figcaption strong { max-width: 25ch; font-size: 1.12rem; }.carousel-footer { right: 1rem; bottom: .8rem; left: 1rem; justify-content: space-between; }.pagination button { width: 26px; }.arrows button { width: 42px; height: 42px; }
+	}
+	@media (prefers-reduced-motion: reduce) { .slide { transition: none; } .timer { display: none; } }
+</style>

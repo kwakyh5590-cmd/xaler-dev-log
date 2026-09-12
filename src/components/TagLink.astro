@@ -14,20 +14,23 @@ const { tag } = Astro.props;
 	a {
 		display: inline-flex;
 		min-height: 44px;
-		padding: 0 .65rem;
+		padding: 0 .72rem;
 		align-items: center;
-		border: 1px solid rgba(148, 163, 184, .16);
+		border: 1px solid var(--line);
 		border-radius: 999px;
-		background: rgba(15, 23, 42, .55);
-		color: #94a3b8;
-		font-size: .75rem;
+		background: rgba(15, 23, 42, .62);
+		color: var(--muted);
+		font-family: var(--font-code);
+		font-size: .7rem;
 		line-height: 1;
 		text-decoration: none;
 		box-sizing: border-box;
+		transition: border-color .2s ease, color .2s ease, background .2s ease;
 	}
 	a:hover,
 	a:focus-visible {
-		border-color: rgba(34, 211, 238, .55);
-		color: #67e8f9;
+		border-color: var(--line-strong);
+		background: rgba(34, 211, 238, .08);
+		color: var(--cyan);
 	}
 </style>

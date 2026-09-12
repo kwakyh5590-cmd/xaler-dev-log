@@ -1,35 +1,153 @@
 ---
 import { getCollection } from 'astro:content';
 import FormattedDate from '../components/FormattedDate.astro';
+import HeroCarousel from '../components/HeroCarousel.astro';
 import TagLink from '../components/TagLink.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 import PageLayout from '../layouts/PageLayout.astro';
 import { withBase } from '../lib/urls';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
-	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()).slice(0, 3);
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const featured = posts[0];
+const recent = posts.slice(1, 4);
+const tagCounts = [...posts.flatMap((post) => post.data.tags).reduce((counts, tag) => {
+	counts.set(tag, (counts.get(tag) ?? 0) + 1);
+	return counts;
+}, new Map<string, number>())].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'));
 ---
 
 <PageLayout title={SITE_TITLE} description={SITE_DESCRIPTION} wide>
 	<section class="hero">
-		<div class="eyebrow"><span></span> BUILD · LEARN · DOCUMENT</div>
-		<h1><span>코드보다 오래 남는</span><em>배움의 기록.</em></h1>
-		<p>{SITE_DESCRIPTION}</p>
-		<div class="actions"><a class="primary" href={withBase('/blog')}>글 살펴보기 <span>→</span></a><a class="secondary" href={withBase('/about')}>블로그 소개</a></div>
+		<HeroCarousel />
+		<div class="hero-copy">
+			<p class="eyebrow">BUILD · LEARN · DOCUMENT</p>
+			<h1><span>코드보다 오래 남는</span><em>배움의 기록.</em></h1>
+			<p class="hero-description">{SITE_DESCRIPTION}</p>
+			<div class="actions">
+				<a class="button button-primary" href={withBase('/blog')}>글 살펴보기 <span aria-hidden="true">→</span></a>
+				<a class="button button-secondary" href={withBase('/about')}>블로그 소개</a>
+			</div>
+		</div>
+
+		<aside class="signal-card" aria-label="블로그 현황">
+			<div class="signal-head"><span><i></i> DEV LOG ONLINE</span><span>XL / 01</span></div>
+			<div class="signal-visual" aria-hidden="true">
+				<span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+			</div>
+			<div class="signal-focus"><small>CURRENT FOCUS</small><strong>직접 만들고,<br />내 언어로 설명하기.</strong></div>
+			<dl>
+				<div><dt>NOTES</dt><dd>{String(posts.length).padStart(2, '0')}</dd></div>
+				<div><dt>TOPICS</dt><dd>{String(tagCounts.length).padStart(2, '0')}</dd></div>
+				<div><dt>STACK</dt><dd>ASTRO</dd></div>
+			</dl>
+		</aside>
 	</section>
+
 	<section class="principles" aria-label="기록 원칙">
-		<article><span>01</span><h2>직접 실행</h2><p>실제로 만들고 확인한 내용만 기록합니다.</p></article>
-		<article><span>02</span><h2>해결 과정</h2><p>결과뿐 아니라 막힌 이유와 판단을 남깁니다.</p></article>
-		<article><span>03</span><h2>쉬운 설명</h2><p>미래의 나도 다시 이해할 수 있게 씁니다.</p></article>
+		<article><span>01</span><div><h2>직접 실행</h2><p>실제로 만들고 확인한 내용만 기록합니다.</p></div></article>
+		<article><span>02</span><div><h2>해결 과정</h2><p>결과뿐 아니라 막힌 이유와 판단을 남깁니다.</p></div></article>
+		<article><span>03</span><div><h2>쉬운 설명</h2><p>미래의 나도 다시 이해할 수 있게 씁니다.</p></div></article>
 	</section>
-	<section class="recent">
-		<div class="section-heading"><div><span>RECENT NOTES</span><h2>최근 기록</h2></div><a href={withBase('/blog')}>전체 보기 →</a></div>
-		<div class="post-grid">
-			{posts.map((post) => <article class="post-card"><a class="post-main" href={withBase(`/blog/${post.id}/`)}><div class="meta"><span>{post.data.category}</span><FormattedDate date={post.data.pubDate} /></div><h3>{post.data.title}</h3><p>{post.data.description}</p></a><div class="tags">{post.data.tags.slice(0,3).map((tag) => <TagLink tag={tag} />)}</div></article>)}
+
+	{featured && (
+		<section class="featured-section">
+			<div class="section-heading">
+				<div><p class="section-kicker">LATEST NOTE</p><h2>가장 최근 기록</h2></div>
+				<a class="all-link" href={withBase('/blog')}>모든 글 보기 <span>→</span></a>
+			</div>
+			<article class="featured-card">
+				<a class="featured-main" href={withBase(`/blog/${featured.id}/`)}>
+					<div class="featured-index">01</div>
+					<div class="featured-copy">
+						<div class="meta"><span>{featured.data.category}</span><FormattedDate date={featured.data.pubDate} /></div>
+						<h3>{featured.data.title}</h3>
+						<p>{featured.data.description}</p>
+					</div>
+					<span class="featured-arrow" aria-hidden="true">↗</span>
+				</a>
+				<div class="tags">{featured.data.tags.slice(0, 4).map((tag) => <TagLink tag={tag} />)}</div>
+			</article>
+		</section>
+	)}
+
+	{recent.length > 0 && (
+		<section class="recent-section">
+			<div class="section-heading compact"><div><p class="section-kicker">MORE NOTES</p><h2>이어지는 기록</h2></div></div>
+			<div class="post-grid">
+				{recent.map((post, index) => (
+					<article class="post-card">
+						<a href={withBase(`/blog/${post.id}/`)}>
+							<div class="meta"><span>{post.data.category}</span><FormattedDate date={post.data.pubDate} /></div>
+							<h3>{post.data.title}</h3><p>{post.data.description}</p><span class="card-number">0{index + 2}</span>
+						</a>
+					</article>
+				))}
+			</div>
+		</section>
+	)}
+
+	<section class="explore-section">
+		<div class="explore-copy"><p class="section-kicker">EXPLORE TOPICS</p><h2>관심 주제로<br />기록을 탐색하세요.</h2><p>태그를 선택하면 같은 주제로 작성한 글만 모아볼 수 있습니다.</p></div>
+		<div class="topic-list">
+			{tagCounts.length > 0 ? tagCounts.map(([tag, count]) => (
+				<a href={withBase(`/tags/${encodeURIComponent(tag)}/`)}><span>#{tag}</span><small>{String(count).padStart(2, '0')}</small></a>
+			)) : <p class="empty-topics">첫 번째 주제 기록을 준비하고 있습니다.</p>}
 		</div>
 	</section>
 </PageLayout>
 
 <style>
-	.hero{padding:7rem 0 6rem;max-width:900px}.eyebrow{display:flex;align-items:center;gap:.65rem;color:#67e8f9;font:700 .75rem/1 var(--font-atkinson);letter-spacing:.16em}.eyebrow span{width:34px;height:2px;background:#22d3ee}h1{margin:1.6rem 0;padding-bottom:.08em;color:#f8fafc;font-size:clamp(3.4rem,8vw,6.8rem);letter-spacing:-.065em;line-height:1.02}h1>span,h1 em{display:block;white-space:nowrap}h1 em{width:max-content;padding:0 .09em .08em 0;margin-bottom:-.08em;color:transparent;font-style:normal;background:linear-gradient(90deg,#67e8f9,#818cf8);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}.hero p{max-width:640px;color:#94a3b8;font-size:1.15rem}.actions{display:flex;gap:.8rem;margin-top:2.2rem}.actions a{display:inline-flex;min-height:48px;padding:0 1.15rem;align-items:center;justify-content:center;border-radius:10px;text-decoration:none;font-size:.9rem;font-weight:700;line-height:1;box-sizing:border-box}.primary{background:#f8fafc;color:#0f172a}.primary span{display:inline-flex;margin-left:.65rem;align-items:center}.secondary{color:#cbd5e1;border:1px solid rgba(148,163,184,.25)}.principles{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid rgba(148,163,184,.16);border-bottom:1px solid rgba(148,163,184,.16)}.principles article{padding:2.2rem;border-right:1px solid rgba(148,163,184,.16)}.principles article:last-child{border-right:0}.principles span,.section-heading span{color:#22d3ee;font-size:.72rem;letter-spacing:.12em}.principles h2{margin:.8rem 0 .4rem;color:#e2e8f0;font-size:1rem}.principles p{margin:0;color:#64748b;font-size:.86rem}.recent{padding:6rem 0}.section-heading{display:flex;align-items:end;justify-content:space-between;margin-bottom:1.8rem}.section-heading>div{padding-left:1ch}.section-heading h2{margin:.35rem 0 0;color:#f8fafc;font-size:2.2rem}.section-heading a{display:inline-flex;min-height:44px;padding:0 .25rem;align-items:center;color:#94a3b8;text-decoration:none;font-size:.85rem;box-sizing:border-box}.post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}.post-card{min-height:250px;padding:1.5rem;border:1px solid rgba(148,163,184,.16);border-radius:16px;background:rgba(15,23,42,.5);transition:transform .2s,border-color .2s}.post-card:hover{transform:translateY(-4px);border-color:rgba(34,211,238,.55)}.post-main{display:block;color:inherit;text-decoration:none}.meta{display:flex;justify-content:space-between;color:#64748b;font-size:.72rem}.meta span{color:#67e8f9}.post-card h3{margin:1.4rem 0 .7rem;color:#f1f5f9;font-size:1.25rem}.post-card p{color:#94a3b8;font-size:.88rem}.tags{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:1.2rem}@media(max-width:800px){.principles,.post-grid{grid-template-columns:1fr}.principles article{border-right:0;border-bottom:1px solid rgba(148,163,184,.16)}.hero{padding:5rem 0 4rem}}@media(max-width:480px){h1{text-align:center;font-size:clamp(2.1rem,9vw,2.5rem)}h1 em{margin-right:auto;margin-left:auto}}
+	.hero { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .72fr); padding: 2.2rem 0 5rem; align-items: center; column-gap: clamp(3rem, 7vw, 7rem); row-gap: 4rem; }
+	.hero-copy { min-width: 0; }
+	.hero h1 { margin: 1.15rem 0 1.5rem; font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', -apple-system, BlinkMacSystemFont, sans-serif; font-size: clamp(3.45rem, 6.45vw, 5.75rem); font-weight: 700; font-kerning: normal; font-synthesis: none; letter-spacing: -.015em; line-height: 1.14; text-rendering: optimizeLegibility; word-break: keep-all; }
+	.hero h1 span, .hero h1 em { display: block; width: max-content; max-width: 100%; padding-block: .025em; line-height: 1.14; white-space: nowrap; }
+	.hero h1 span { margin-bottom: .04em; }
+	.hero h1 em { width: max-content; padding-right: .06em; padding-bottom: .09em; color: transparent; font-style: normal; background: var(--gradient); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+	:global(html.motion-enabled) .hero-copy h1 { filter: none !important; transform: none !important; transition: opacity .62s ease var(--motion-delay, 0ms) !important; }
+	.hero-description { max-width: 590px; color: var(--muted); font-size: 1.02rem; }
+	.actions { display: flex; margin-top: 2rem; gap: .7rem; }
+	.signal-card { position: relative; overflow: hidden; padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: linear-gradient(145deg, rgba(17, 28, 50, .9), rgba(8, 14, 27, .8)); box-shadow: var(--shadow-card); }
+	.signal-card::before { position: absolute; top: -60px; right: -70px; width: 180px; height: 180px; border-radius: 50%; background: rgba(99, 102, 241, .24); filter: blur(45px); content: ''; }
+	.signal-head { position: relative; display: flex; justify-content: space-between; color: var(--faint); font: 700 .58rem/1 var(--font-code); letter-spacing: .1em; }
+	.signal-head span:first-child { display: flex; align-items: center; gap: .4rem; color: var(--cyan); }
+	.signal-head i { width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 12px var(--cyan); }
+	.signal-visual { display: flex; height: 135px; margin: 2.1rem 0 1.7rem; align-items: end; gap: 8px; }
+	.signal-visual span { flex: 1; min-width: 5px; border-radius: 10px 10px 3px 3px; background: linear-gradient(to top, rgba(34, 211, 238, .18), var(--cyan)); opacity: .8; }
+	.signal-visual span:nth-child(1) { height: 25%; }.signal-visual span:nth-child(2) { height: 46%; }.signal-visual span:nth-child(3) { height: 34%; }.signal-visual span:nth-child(4) { height: 72%; }.signal-visual span:nth-child(5) { height: 58%; }.signal-visual span:nth-child(6) { height: 88%; }.signal-visual span:nth-child(7) { height: 65%; }.signal-visual span:nth-child(8) { height: 100%; background: linear-gradient(to top, rgba(129, 140, 248, .2), var(--indigo)); }
+	.signal-focus { position: relative; padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: rgba(7, 11, 20, .46); }
+	.signal-focus small { display: block; margin-bottom: .65rem; color: var(--faint); font: 700 .58rem/1 var(--font-code); letter-spacing: .12em; }
+	.signal-focus strong { font-size: 1.05rem; line-height: 1.45; }
+	.signal-card dl { display: grid; grid-template-columns: repeat(3, 1fr); margin: 1.1rem 0 0; }
+	.signal-card dl div { padding: .4rem .7rem; border-right: 1px solid var(--line); }.signal-card dl div:first-child { padding-left: 0; }.signal-card dl div:last-child { padding-right: 0; border: 0; }
+	.signal-card dt { color: var(--faint); font: 700 .54rem/1 var(--font-code); letter-spacing: .1em; }.signal-card dd { margin: .45rem 0 0; color: var(--text); font: 700 .78rem/1 var(--font-code); }
+	.principles { display: grid; grid-template-columns: repeat(3, 1fr); border-block: 1px solid var(--line); }
+	.principles article { position: relative; z-index: 1; display: grid; grid-template-columns: 36px 1fr; padding: 2rem 1.8rem; gap: .5rem; border-right: 1px solid var(--line); background: rgba(7, 11, 20, 0); scale: 1; translate: 0 0; transition: scale .36s cubic-bezier(.22, 1, .36, 1), translate .36s cubic-bezier(.22, 1, .36, 1), background-color .28s ease, box-shadow .36s ease, opacity .72s cubic-bezier(.22, 1, .36, 1) var(--motion-delay, 0ms), transform .72s cubic-bezier(.22, 1, .36, 1) var(--motion-delay, 0ms), filter .55s ease var(--motion-delay, 0ms); }
+	.principles article:last-child { border: 0; }.principles span { color: var(--cyan); font: 700 .68rem/1.8 var(--font-code); transition: color .28s ease, text-shadow .28s ease; }.principles h2 { margin: 0 0 .35rem; font-size: 1rem; letter-spacing: -.02em; transform-origin: left center; transition: color .28s ease, transform .36s cubic-bezier(.22, 1, .36, 1); }.principles p { margin: 0; color: var(--muted); font-size: .8rem; line-height: 1.65; transition: color .28s ease, transform .36s cubic-bezier(.22, 1, .36, 1); }
+	@media (hover: hover) and (pointer: fine) {
+		.principles article:hover { z-index: 3; border-radius: var(--radius-sm); background: linear-gradient(135deg, rgba(21, 35, 61, .97), rgba(10, 20, 38, .98)); box-shadow: 0 22px 55px rgba(0, 0, 0, .4), inset 0 0 0 1px var(--line-strong); scale: 1.045; translate: 0 -7px; }
+		.principles article:hover span { color: #a5f3fc; text-shadow: 0 0 18px rgba(103, 232, 249, .42); }
+		.principles article:hover h2 { color: var(--cyan); transform: scale(1.045); }
+		.principles article:hover p { color: var(--text-soft); transform: translateY(2px); }
+	}
+	.featured-section, .recent-section { padding-top: 7rem; }
+	.section-heading { display: flex; margin-bottom: 2rem; align-items: end; justify-content: space-between; gap: 1.5rem; }
+	.section-heading h2 { margin: 0; font-size: clamp(2rem, 4vw, 3.2rem); }.section-heading .section-kicker { margin-bottom: .65rem; }
+	.all-link { display: inline-flex; min-height: 44px; align-items: center; gap: .6rem; color: var(--muted); font-size: .8rem; text-decoration: none; }.all-link:hover { color: var(--cyan); }
+	.featured-card { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-md); background: linear-gradient(130deg, rgba(15, 23, 42, .84), rgba(10, 16, 32, .58)); transition: border-color .25s ease, transform .25s ease; }
+	.featured-card:hover { border-color: var(--line-strong); transform: translateY(-3px); }
+	.featured-main { display: grid; grid-template-columns: 70px 1fr 50px; padding: clamp(1.5rem, 4vw, 3rem); align-items: start; gap: 1rem; color: inherit; text-decoration: none; }
+	.featured-index { color: var(--faint); font: 700 .72rem/1.8 var(--font-code); }.featured-copy { max-width: 720px; }.meta { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; color: var(--faint); font: .66rem/1.4 var(--font-code); }.meta span { color: var(--cyan); letter-spacing: .08em; text-transform: uppercase; }
+	.featured-copy h3 { margin: 1rem 0 .65rem; font-size: clamp(1.7rem, 4vw, 2.8rem); }.featured-copy p { margin: 0; color: var(--muted); font-size: .92rem; }.featured-arrow { color: var(--faint); font-size: 1.4rem; transition: transform .2s ease, color .2s ease; }.featured-card:hover .featured-arrow { color: var(--cyan); transform: translate(4px, -4px); }
+	.tags { display: flex; padding: 0 clamp(1.5rem, 4vw, 3rem) 1.8rem calc(clamp(1.5rem, 4vw, 3rem) + 86px); flex-wrap: wrap; gap: .45rem; }
+	.post-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; }.post-card a { position: relative; display: block; min-height: 260px; padding: 1.5rem; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); color: inherit; text-decoration: none; transition: transform .2s ease, border-color .2s ease; }.post-card a:hover { border-color: var(--line-strong); transform: translateY(-4px); }.post-card h3 { margin: 1.4rem 0 .6rem; font-size: 1.28rem; }.post-card p { color: var(--muted); font-size: .82rem; }.card-number { position: absolute; right: 1.2rem; bottom: .8rem; color: rgba(148, 163, 184, .06); font: 700 4.5rem/1 var(--font-code); }
+	.explore-section { display: grid; grid-template-columns: .8fr 1.2fr; margin-top: 7rem; padding: 4rem; gap: clamp(2rem, 7vw, 7rem); border: 1px solid var(--line); border-radius: var(--radius-lg); background: rgba(10, 16, 32, .66); }.explore-copy h2 { margin-bottom: 1.2rem; font-size: clamp(2rem, 4vw, 3rem); }.explore-copy > p:last-child { margin: 0; color: var(--muted); font-size: .86rem; }.topic-list { display: grid; align-content: center; }.topic-list a { display: flex; min-height: 58px; padding: 0 .25rem; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); color: var(--text-soft); text-decoration: none; }.topic-list a:first-child { border-top: 1px solid var(--line); }.topic-list a:hover { padding-left: .75rem; color: var(--cyan); }.topic-list small { color: var(--faint); font: .68rem/1 var(--font-code); }.empty-topics { color: var(--muted); }
+	@media (max-width: 900px) {
+		.hero { grid-template-columns: 1fr; padding-top: 1.8rem; row-gap: 3rem; }.signal-card { width: 100%; max-width: 520px; }.principles article { grid-template-columns: 28px 1fr; padding: 1.6rem 1rem; }.post-grid { grid-template-columns: 1fr 1fr; }.explore-section { padding: 3rem; grid-template-columns: 1fr; }
+	}
+	@media (max-width: 640px) {
+		.hero { padding: 1rem 0 3.5rem; gap: 2.8rem; text-align: center; }.hero-copy .eyebrow { justify-content: center; }.hero h1 { font-size: clamp(2.35rem, 11.3vw, 3.25rem); letter-spacing: -.01em; line-height: 1.16; }.hero h1 span, .hero h1 em { width: auto; line-height: 1.16; white-space: normal; }.hero h1 em { width: auto; }.hero-description { max-width: 35ch; margin-inline: auto; font-size: .94rem; }.actions { justify-content: center; flex-wrap: wrap; }.actions .button { flex: 1; min-width: 145px; }.signal-card { text-align: left; }.signal-visual { height: 92px; margin: 1.5rem 0; }
+		.principles { grid-template-columns: 1fr; }.principles article { border-right: 0; border-bottom: 1px solid var(--line); }.principles article:last-child { border-bottom: 0; }
+		.featured-section, .recent-section { padding-top: 5rem; }.section-heading { align-items: start; }.all-link { flex-shrink: 0; }.featured-main { grid-template-columns: 1fr 34px; padding: 1.5rem; }.featured-index { display: none; }.featured-copy h3 { font-size: 1.65rem; }.tags { padding: 0 1.5rem 1.5rem; }.post-grid { grid-template-columns: 1fr; }.post-card a { min-height: 225px; }.explore-section { margin-top: 5rem; padding: 2rem 1.35rem; border-radius: var(--radius-md); }.explore-copy h2 br { display: none; }
+	}
 </style>

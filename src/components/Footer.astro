@@ -6,16 +6,33 @@ const year = new Date().getFullYear();
 
 <footer>
 	<div class="footer-inner">
-		<div><strong>{SITE_TITLE}</strong><p>배운 것을 설명할 수 있을 때까지 기록합니다.</p></div>
+		<div class="footer-brand"><div class="status"><span></span> 계속 기록 중</div><strong>{SITE_TITLE}</strong><p>배운 것을 내 언어로 다시 설명하는 공간입니다.</p></div>
 		<nav aria-label="하단 메뉴">
+			<a href={withBase('/blog')}>모든 글</a>
 			<a href={withBase('/privacy')}>개인정보처리방침</a>
 			<a href={withBase('/rss.xml')}>RSS</a>
 			<a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a>
 		</nav>
 	</div>
-	<p class="copyright">© {year} Xaler. All rights reserved.</p>
+	<div class="copyright"><span>© {year} Xaler. All rights reserved.</span><span>Designed & built with Astro.</span></div>
 </footer>
 
 <style>
-	footer{padding:3.5rem 1.25rem 2.5rem;border-top:1px solid rgba(148,163,184,.18);background:#090e19;color:#94a3b8}.footer-inner{max-width:1120px;margin:0 auto;display:flex;justify-content:space-between;gap:2rem}strong{color:#f8fafc}p{margin:.35rem 0 0;font-size:.9rem}nav{display:flex;flex-wrap:wrap;gap:.5rem}a{display:inline-flex;min-width:44px;min-height:44px;padding:0 .25rem;align-items:center;justify-content:center;color:#cbd5e1;text-decoration:none;font-size:.88rem;box-sizing:border-box}a:hover{color:#67e8f9}.copyright{max-width:1120px;margin:2rem auto 0;padding-top:1.5rem;border-top:1px solid rgba(148,163,184,.12)}@media(max-width:640px){.footer-inner{flex-direction:column}}
+	footer { padding: 4.5rem 1.25rem 2rem; border-top: 1px solid var(--line); background: rgba(7, 11, 20, .72); color: var(--muted); }
+	.footer-inner, .copyright { max-width: var(--wide); margin: 0 auto; }
+	.footer-inner { display: flex; justify-content: space-between; gap: 2.5rem; }
+	.footer-brand { max-width: 420px; }
+	.status { display: flex; margin-bottom: .85rem; align-items: center; gap: .55rem; color: var(--cyan); font: 700 .68rem/1 var(--font-code); letter-spacing: .1em; }
+	.status span { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 14px var(--cyan); }
+	strong { display: block; color: var(--text); font-size: 1.25rem; }
+	p { margin: .35rem 0 0; font-size: .86rem; }
+	nav { display: flex; flex-wrap: wrap; align-content: flex-start; gap: .25rem 1rem; }
+	a { display: inline-flex; min-height: 44px; align-items: center; color: var(--muted); text-decoration: none; font-size: .78rem; }
+	a:hover { color: var(--cyan); }
+	.copyright { display: flex; margin-top: 2.6rem; padding-top: 1.5rem; justify-content: space-between; gap: 1rem; border-top: 1px solid var(--line); color: var(--faint); font: .68rem/1.5 var(--font-code); }
+	@media (max-width: 640px) {
+		.footer-inner, .copyright { flex-direction: column; }
+		nav { gap: 0 1rem; }
+		.copyright { margin-top: 2rem; }
+	}
 </style>
