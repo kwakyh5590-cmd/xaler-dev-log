@@ -282,13 +282,7 @@ html.motion-enabled :is(
 	.list-status,
 	.post-list > article,
 	.post-list > a,
-	.about-page > *,
-	.post-hero > *,
-	.hero-image,
-	.mobile-toc,
-	.prose-content > *,
-	.post-navigation,
-	.back-bottom
+	.about-page > *
 ) {
 	opacity: 0;
 	filter: blur(3px);
@@ -315,13 +309,7 @@ html.motion-enabled :is(
 	.list-status,
 	.post-list > article,
 	.post-list > a,
-	.about-page > *,
-	.post-hero > *,
-	.hero-image,
-	.mobile-toc,
-	.prose-content > *,
-	.post-navigation,
-	.back-bottom
+	.about-page > *
 ).is-visible {
 	opacity: 1;
 	filter: blur(0);
@@ -347,7 +335,6 @@ html.motion-enabled :is(
 	html.motion-enabled :is(
 		.hero-carousel, .hero-copy > *, .signal-card, .principles article, .section-heading > *, .featured-card,
 		.post-card, .explore-copy > *, .topic-list > *, .page-header > *, .filter-panel,
-		.list-status, .post-list > article, .post-list > a, .about-page > *, .post-hero > *,
-		.hero-image, .mobile-toc, .prose-content > *, .post-navigation, .back-bottom
+		.list-status, .post-list > article, .post-list > a, .about-page > *
 	) { opacity: 1; filter: none; transform: none; }
 }

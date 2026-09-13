@@ -12,6 +12,7 @@ import { withBase } from '../lib/urls';
 
 type PostData = CollectionEntry<'blog'>['data'];
 type PostLink = { id: string; title: string };
+type TocGroup = { heading: MarkdownHeading; children: MarkdownHeading[] };
 interface Props extends PostData {
 	headings: MarkdownHeading[];
 	readingMinutes: number;
@@ -21,6 +22,11 @@ interface Props extends PostData {
 
 const { title, description, pubDate, updatedDate, heroImage, category, tags, headings, readingMinutes, newer, older } = Astro.props;
 const tableOfContents = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+const tocGroups: TocGroup[] = [];
+for (const heading of tableOfContents) {
+	if (heading.depth === 2) tocGroups.push({ heading, children: [] });
+	else tocGroups.at(-1)?.children.push(heading);
+}
 const pageFade = fade({ duration: '0.24s' });
 ---
 
@@ -63,13 +69,34 @@ const pageFade = fade({ duration: '0.24s' });
 
 				{tableOfContents.length > 0 && (
 					<aside class="desktop-toc">
-						<div>
+						<div class="toc-rail">
 							<p>ON THIS PAGE</p>
-							<nav aria-label="글 목차">
-								{tableOfContents.map((heading) => <a class:list={{ sub: heading.depth === 3 }} href={`#${heading.slug}`}>{heading.text}</a>)}
+							<nav class="toc-list" aria-label="글 목차">
+								{tocGroups.map((group, index) => (
+									<div class:list={['toc-group', { 'is-current-section': index === 0 }]} data-toc-group={group.heading.slug}>
+										<a href={`#${group.heading.slug}`}>{group.heading.text}</a>
+										{group.children.length > 0 && (
+											<div class="toc-subitems">
+												{group.children.map((heading) => <a class="sub" href={`#${heading.slug}`}>{heading.text}</a>)}
+											</div>
+										)}
+									</div>
+								))}
 							</nav>
+							<button class="toc-open" type="button">전체 목차 보기 <span aria-hidden="true">↗</span></button>
 							<a class="top-link" href="#top">맨 위로 ↑</a>
 						</div>
+						<dialog class="toc-dialog" aria-labelledby="toc-dialog-title">
+							<div class="toc-dialog-panel">
+								<header>
+									<div><small>ON THIS PAGE</small><h2 id="toc-dialog-title">전체 목차</h2></div>
+									<button class="toc-close" type="button" aria-label="전체 목차 닫기">닫기</button>
+								</header>
+								<nav aria-label="전체 글 목차">
+									{tableOfContents.map((heading) => <a class:list={{ sub: heading.depth === 3 }} href={`#${heading.slug}`}>{heading.text}</a>)}
+								</nav>
+							</div>
+						</dialog>
 					</aside>
 				)}
 			</div>
@@ -118,18 +145,41 @@ const pageFade = fade({ duration: '0.24s' });
 					wrapper.appendChild(button);
 				});
 
-				const tocLinks = [...document.querySelectorAll<HTMLAnchorElement>('.desktop-toc nav a')];
-				const observedHeadings = tocLinks.map((link) => document.querySelector<HTMLElement>(link.hash)).filter(Boolean) as HTMLElement[];
-				const tocObserver = new IntersectionObserver((entries) => {
-					const current = entries.find((entry) => entry.isIntersecting);
-					if (!current) return;
-					tocLinks.forEach((link) => link.classList.toggle('active', link.hash === `#${current.target.id}`));
-				}, { rootMargin: '-20% 0px -65% 0px' });
-				observedHeadings.forEach((heading) => tocObserver.observe(heading));
+				const tocRoot = document.querySelector<HTMLElement>('.desktop-toc');
+				const tocLinks = [...(tocRoot?.querySelectorAll<HTMLAnchorElement>('.toc-list a') ?? [])];
+				const observedHeadings = tocLinks.map((link) => document.getElementById(decodeURIComponent(link.hash.slice(1)))).filter(Boolean) as HTMLElement[];
+				const updateActiveToc = () => {
+					if (!tocRoot || observedHeadings.length === 0) return;
+					const headerHeight = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 64;
+					const threshold = headerHeight + 48;
+					let current = observedHeadings[0];
+					for (const heading of observedHeadings) {
+						if (heading.getBoundingClientRect().top > threshold) break;
+						current = heading;
+					}
+					const currentHash = `#${current.id}`;
+					const currentLink = tocLinks.find((link) => link.getAttribute('href') === currentHash);
+					tocLinks.forEach((link) => link.classList.toggle('active', link === currentLink));
+					const currentGroup = currentLink?.closest('.toc-group');
+					tocRoot.querySelectorAll('.toc-group').forEach((group) => group.classList.toggle('is-current-section', group === currentGroup));
+				};
+				updateActiveToc();
+				window.addEventListener('scroll', updateActiveToc, { passive: true, signal: controller.signal });
+				window.addEventListener('resize', updateActiveToc, { signal: controller.signal });
+
+				const tocDialog = document.querySelector<HTMLDialogElement>('.toc-dialog');
+				const openToc = document.querySelector<HTMLButtonElement>('.toc-open');
+				const closeToc = document.querySelector<HTMLButtonElement>('.toc-close');
+				openToc?.addEventListener('click', () => tocDialog?.showModal(), { signal: controller.signal });
+				closeToc?.addEventListener('click', () => tocDialog?.close(), { signal: controller.signal });
+				tocDialog?.addEventListener('click', (event) => {
+					if (event.target === tocDialog) tocDialog.close();
+				}, { signal: controller.signal });
+				tocDialog?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => tocDialog.close(), { signal: controller.signal }));
 
 				articleCleanup = () => {
 					controller.abort();
-					tocObserver.disconnect();
+					if (tocDialog?.open) tocDialog.close();
 				};
 			}
 
@@ -143,9 +193,10 @@ const pageFade = fade({ duration: '0.24s' });
 	.post-main { width: var(--wide); max-width: calc(100% - 2rem); padding: 0 0 7rem; }
 	.post-hero { max-width: 920px; padding: 5rem 0 4rem; }.back-top { display: inline-flex; min-height: 44px; align-items: center; color: var(--faint); font: 700 .62rem/1 var(--font-code); letter-spacing: .11em; text-decoration: none; }.back-top:hover { color: var(--cyan); }.post-meta { display: flex; margin: 2.2rem 0 1.1rem; flex-wrap: wrap; align-items: center; gap: .8rem; color: var(--faint); font: .68rem/1.5 var(--font-code); }.post-meta span:first-child { color: var(--cyan); letter-spacing: .09em; text-transform: uppercase; }.post-meta > * + *::before { margin-right: .8rem; color: var(--faint); content: '·'; }.post-hero h1 { max-width: 1000px; margin-bottom: 1.4rem; font-size: clamp(3rem, 6.5vw, 5.5rem); line-height: 1.02; letter-spacing: -.062em; word-break: keep-all; text-wrap: balance; }.description { max-width: 720px; color: var(--muted); font-size: 1.05rem; }.tags { display: flex; margin-top: 1.5rem; flex-wrap: wrap; gap: .45rem; }.updated { margin: 1rem 0 0; color: var(--faint); font-size: .72rem; }
 	.hero-image { margin-bottom: 4.5rem; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-md); }.hero-image :global(img) { display: block; width: 100%; border-radius: 0; }
-	.article-grid { display: grid; grid-template-columns: minmax(0, var(--content)) 240px; max-width: 1030px; gap: clamp(3rem, 7vw, 6rem); }.article-grid.without-toc { grid-template-columns: minmax(0, var(--content)); }.article-body { min-width: 0; color: var(--text-soft); }
+	.article-grid { display: grid; grid-template-columns: minmax(0, var(--content)) 260px; max-width: 1050px; gap: clamp(3rem, 7vw, 6rem); }.article-grid.without-toc { grid-template-columns: minmax(0, var(--content)); }.article-body { min-width: 0; color: var(--text-soft); }
 	.prose-content :global(p), .prose-content :global(li) { color: var(--text-soft); }.prose-content :global(p) { margin-bottom: 1.65rem; }.prose-content :global(ul), .prose-content :global(ol) { margin: 1.3rem 0 2rem; padding-left: 1.4rem; }.prose-content :global(li) { margin: .45rem 0; }.prose-content :global(h2) { margin: 4.2rem 0 1.4rem; padding-top: 1rem; font-size: clamp(1.8rem, 3vw, 2.35rem); scroll-margin-top: calc(var(--header-height) + 2rem); }.prose-content :global(h3) { margin: 3rem 0 1rem; padding-top: .8rem; scroll-margin-top: calc(var(--header-height) + 2rem); }.prose-content :global(a) { text-decoration-thickness: 1px; }.prose-content :global(img) { margin: 1rem 0 2rem; border: 1px solid var(--line); }
-	.desktop-toc { min-width: 0; }.desktop-toc > div { position: sticky; top: calc(var(--header-height) + 2.4rem); max-height: calc(100dvh - var(--header-height) - 4.8rem); padding: 0 .8rem 1rem 1.3rem; overflow-y: auto; overscroll-behavior: contain; border-left: 1px solid var(--line); scrollbar-color: var(--line-strong) transparent; scrollbar-gutter: stable; scrollbar-width: thin; }.desktop-toc > div::-webkit-scrollbar { width: 4px; }.desktop-toc > div::-webkit-scrollbar-track { background: transparent; }.desktop-toc > div::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }.desktop-toc p { margin: 0 0 1rem; color: var(--faint); font: 700 .62rem/1 var(--font-code); letter-spacing: .12em; }.desktop-toc nav { display: grid; gap: .12rem; }.desktop-toc a { display: block; padding: .42rem 0; color: var(--muted); font-size: .73rem; line-height: 1.45; text-decoration: none; }.desktop-toc a.sub { padding-left: .8rem; font-size: .68rem; }.desktop-toc a:hover, .desktop-toc a.active { color: var(--cyan); }.desktop-toc .top-link { margin-top: 1.3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--faint); font: .62rem/1 var(--font-code); }
+	.desktop-toc { min-width: 0; }.toc-rail { position: sticky; top: calc(var(--header-height) + 2.4rem); padding: 0 0 1rem 1.3rem; border-left: 1px solid var(--line); }.desktop-toc p { margin: 0 0 1rem; color: var(--faint); font: 700 .62rem/1 var(--font-code); letter-spacing: .12em; }.toc-list { display: grid; gap: .12rem; }.desktop-toc a { display: block; padding: .42rem 0; color: var(--muted); font-size: .73rem; line-height: 1.45; text-decoration: none; }.desktop-toc a.sub { padding-left: .8rem; font-size: .68rem; }.desktop-toc a:hover, .desktop-toc a.active { color: var(--cyan); }.toc-subitems { display: none; padding: .15rem 0 .35rem; }.toc-group.is-current-section .toc-subitems { display: grid; }.toc-open { display: flex; width: 100%; min-height: 42px; margin-top: 1rem; padding: 0; align-items: center; justify-content: space-between; border: 0; border-top: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; font: 700 .65rem/1 var(--font-code); }.toc-open:hover { color: var(--cyan); }.desktop-toc .top-link { margin-top: 0; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--faint); font: .62rem/1 var(--font-code); }
+	.toc-dialog { width: min(620px, calc(100% - 2rem)); max-height: min(82dvh, 760px); padding: 0; overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: #0a1020; color: var(--text); box-shadow: 0 30px 90px rgba(0, 0, 0, .62); }.toc-dialog::backdrop { background: rgba(3, 7, 18, .78); backdrop-filter: blur(8px); }.toc-dialog-panel { display: grid; grid-template-rows: auto minmax(0, 1fr); max-height: min(82dvh, 760px); }.toc-dialog header { display: flex; padding: 1.35rem 1.5rem; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }.toc-dialog header small { color: var(--cyan); font: 700 .58rem/1 var(--font-code); letter-spacing: .12em; }.toc-dialog h2 { margin: .45rem 0 0; font-size: 1.35rem; }.toc-close { min-width: 52px; min-height: 40px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; }.toc-close:hover { border-color: var(--line-strong); color: var(--text); }.toc-dialog nav { display: grid; padding: 1rem 1.5rem 1.5rem; overflow-y: auto; overscroll-behavior: contain; }.toc-dialog nav a { padding: .62rem 0; border-bottom: 1px solid rgba(148, 163, 184, .08); font-size: .86rem; }.toc-dialog nav a.sub { padding-left: 1.1rem; font-size: .78rem; }
 	.mobile-toc { display: none; margin-bottom: 2.5rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }.mobile-toc summary { display: flex; min-height: 52px; padding: 0 1rem; align-items: center; justify-content: space-between; color: var(--text); cursor: pointer; font-size: .8rem; font-weight: 700; list-style: none; }.mobile-toc summary::-webkit-details-marker { display: none; }.mobile-toc summary span { color: var(--faint); font: .62rem/1 var(--font-code); }.mobile-toc nav { display: grid; padding: 0 1rem 1rem; }.mobile-toc a { padding: .4rem 0; color: var(--muted); font-size: .75rem; text-decoration: none; }.mobile-toc a.sub { padding-left: .8rem; }
 	.post-navigation { display: grid; grid-template-columns: 1fr 1fr; margin-top: 5rem; gap: .8rem; }.post-navigation > a { display: grid; min-height: 120px; padding: 1.2rem; align-content: center; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-soft); text-decoration: none; }.post-navigation > a:hover { border-color: var(--line-strong); color: var(--cyan); }.post-navigation .newer { text-align: right; }.post-navigation small { margin-bottom: .5rem; color: var(--faint); font: .62rem/1 var(--font-code); }.post-navigation strong { font-size: .84rem; line-height: 1.5; }.back-bottom { display: inline-flex; min-height: 48px; margin-top: 2.5rem; align-items: center; gap: .7rem; color: var(--muted); font-size: .78rem; text-decoration: none; }.back-bottom:hover { color: var(--cyan); }
 	@media (max-width: 900px) { .article-grid { grid-template-columns: minmax(0, var(--content)); max-width: var(--content); }.desktop-toc { display: none; }.mobile-toc { display: block; } }
